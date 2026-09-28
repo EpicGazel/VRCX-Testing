@@ -39,6 +39,8 @@ import { useGeneralSettingsStore } from '../settings/general';
 import { showGroupDialog } from '../../coordinators/groupCoordinator';
 import { showUserDialog } from '../../coordinators/userCoordinator';
 import { useInstanceStore } from '../instance';
+import { useInviteStore } from '../invite';
+import { useGalleryStore } from '../gallery';
 import { useLocationStore } from '../location';
 import { useModalStore } from '../modal';
 import { useNotificationsSettingsStore } from '../settings/notifications';
@@ -1242,6 +1244,224 @@ export const useNotificationStore = defineStore('Notification', () => {
     }
 
     /**
+     * Log an outgoing invite / invite-request / boop the same way an
+     * incoming notification is stored: SQLite + notification table +
+     * shared (wrist) feed. Outgoing entries use dedicated `*Sent` types so
+     * they group separately from received ones, and carry the receiver in
+     * the sender fields (the user column) since we already know we are the
+     * sender. Deliberately skips queueNotificationNoty and notifyMenu so we
+     * don't toast/badge our own sends.
+     *
+     * @param {object} ref - V1 or V2 notification ref (sender = receiver)
+     */
+    function appendOutgoingNotificationToLog(ref) {
+        if (!ref) {
+            return;
+        }
+        if (ref.version >= 2) {
+            database.addNotificationV2ToDatabase(ref);
+        } else {
+            database.addNotificationToDatabase(ref);
+        }
+        const array = notificationTable.value.data;
+        if (!array.some((n) => n.id === ref.id)) {
+            array.push(ref);
+        }
+        sharedFeedStore.addEntry(ref);
+    }
+
+    function getOutgoingReceiverName(receiverUserId) {
+        return userStore.cachedUsers.get(receiverUserId)?.displayName ?? '';
+    }
+
+    /**
+     * Look up invite/request message text by slot in an invite message table
+     * (array of {slot, message} rows).
+     *
+     * @param {any} slot
+     * @param {any} tableData
+     * @returns {string}
+     */
+    function lookupInviteSlotMessage(slot, tableData) {
+        if (typeof slot === 'undefined' || slot === null || !Array.isArray(tableData)) {
+            return '';
+        }
+        const row = tableData.find((r) => String(r?.slot) === String(slot));
+        return typeof row?.message === 'string' ? row.message : '';
+    }
+
+    /**
+     * Resolve the human-readable text of an outgoing invite / request invite.
+     * Prefers explicit params text, then the server echo, then the local
+     * invite message tables (slot -> message).
+     *
+     * @param {object} params
+     * @param {object} serverDetails
+     * @param {'invite' | 'requestInvite'} kind
+     * @returns {string}
+     */
+    function resolveOutgoingInviteText(params = {}, serverDetails = {}, kind = 'invite') {
+        if (kind === 'requestInvite') {
+            if (typeof params.requestMessage === 'string' && params.requestMessage) {
+                return params.requestMessage;
+            }
+            if (typeof params.message === 'string' && params.message) {
+                return params.message;
+            }
+            if (typeof serverDetails.requestMessage === 'string' && serverDetails.requestMessage) {
+                return serverDetails.requestMessage;
+            }
+        } else {
+            if (typeof params.inviteMessage === 'string' && params.inviteMessage) {
+                return params.inviteMessage;
+            }
+            if (typeof params.message === 'string' && params.message) {
+                return params.message;
+            }
+            if (typeof serverDetails.inviteMessage === 'string' && serverDetails.inviteMessage) {
+                return serverDetails.inviteMessage;
+            }
+        }
+        try {
+            const inviteStore = useInviteStore();
+            const slot = params.messageSlot ?? params.requestSlot;
+            if (typeof slot !== 'undefined' && slot !== null) {
+                const tableData =
+                    kind === 'requestInvite'
+                        ? (inviteStore.inviteRequestMessageTable?.value?.data ??
+                          inviteStore.inviteRequestMessageTable?.data)
+                        : (inviteStore.inviteMessageTable?.value?.data ?? inviteStore.inviteMessageTable?.data);
+                const text = lookupInviteSlotMessage(slot, tableData);
+                if (text) {
+                    return text;
+                }
+            }
+        } catch {
+            // invite store unavailable (e.g. tests), ignore
+        }
+        return '';
+    }
+
+    /**
+     * @param {string} receiverUserId
+     * @param {object} params - SendInvite params ({instanceId, worldId, worldName, ...})
+     * @param {any} json - Server response (used for message text only; the
+     *   logged entry always uses a local id so a later refresh can't merge
+     *   server data over it)
+     */
+    function logOutgoingInvite(receiverUserId, params = {}, json = {}) {
+        const now = new Date().toJSON();
+        const serverDetails = parseNotificationDetails(json?.details ?? {});
+        const receiverName = getOutgoingReceiverName(receiverUserId);
+        const inviteText = resolveOutgoingInviteText(params, serverDetails, 'invite');
+        const ref = createDefaultNotificationRef({
+            id: `outgoing_invite_${Date.now()}_${receiverUserId}`,
+            created_at: now,
+            type: 'inviteSent',
+            senderUserId: receiverUserId,
+            senderUsername: receiverName,
+            receiverUserId: userStore.currentUser?.id ?? '',
+            message: inviteText,
+            details: {
+                worldId: params.worldId ?? params.instanceId ?? serverDetails.worldId ?? '',
+                worldName: params.worldName ?? serverDetails.worldName ?? '',
+                inviteMessage: inviteText || serverDetails.inviteMessage || ''
+            },
+            seen: true
+        });
+        appendOutgoingNotificationToLog(ref);
+        return ref;
+    }
+
+    /**
+     * @param {string} receiverUserId
+     * @param {object} params - SendRequestInvite params ({platform, ...})
+     * @param {any} json - Server response (used for message text only; the
+     *   logged entry always uses a local id so a later refresh can't merge
+     *   server data over it)
+     */
+    function logOutgoingRequestInvite(receiverUserId, params = {}, json = {}) {
+        const now = new Date().toJSON();
+        const serverDetails = parseNotificationDetails(json?.details ?? {});
+        const receiverName = getOutgoingReceiverName(receiverUserId);
+        const requestText = resolveOutgoingInviteText(params, serverDetails, 'requestInvite');
+        const ref = createDefaultNotificationRef({
+            id: `outgoing_requestInvite_${Date.now()}_${receiverUserId}`,
+            created_at: now,
+            type: 'requestInviteSent',
+            senderUserId: receiverUserId,
+            senderUsername: receiverName,
+            receiverUserId: userStore.currentUser?.id ?? '',
+            message: requestText,
+            details: {
+                requestMessage: requestText || serverDetails.requestMessage || ''
+            },
+            seen: true
+        });
+        appendOutgoingNotificationToLog(ref);
+        return ref;
+    }
+
+    /**
+     * @param {object} params - SendBoop params ({userId, emojiId})
+     * @param {any} json - Server response (used for emoji fallback only; the
+     *   logged entry always uses a local id)
+     */
+    function logOutgoingBoop(params = {}, json = {}) {
+        const receiverUserId = params.userId ?? '';
+        if (!receiverUserId) {
+            return null;
+        }
+        const now = new Date().toJSON();
+        const emojiId = params.emojiId ?? json?.details?.emojiId ?? '';
+        const receiverName = getOutgoingReceiverName(receiverUserId);
+        let imageUrl = '';
+        let emojiText = 'boop';
+        if (typeof emojiId === 'string' && emojiId) {
+            if (emojiId.startsWith('default_')) {
+                imageUrl = emojiId;
+                emojiText = emojiId.replace(/^default_/, '').replaceAll('_', ' ');
+            } else {
+                try {
+                    const galleryStore = useGalleryStore();
+                    const table = galleryStore.emojiTable?.value ?? galleryStore.emojiTable ?? [];
+                    const rows = Array.isArray(table) ? table : [];
+                    const match = rows.find((row) => row?.id === emojiId);
+                    const versions = match?.versions;
+                    const last = Array.isArray(versions) ? versions[versions.length - 1] : null;
+                    if (last?.file?.url) {
+                        imageUrl = last.file.url;
+                    }
+                    if (typeof match?.name === 'string' && match.name) {
+                        emojiText = match.name;
+                    } else {
+                        emojiText = 'boop';
+                    }
+                } catch {
+                    // gallery unavailable, keep defaults
+                }
+            }
+        }
+        const ref = createDefaultNotificationV2Ref({
+            id: `outgoing_boop_${Date.now()}_${receiverUserId}`,
+            createdAt: now,
+            type: 'boopSent',
+            link: `user:${receiverUserId}`,
+            linkText: receiverName,
+            message: emojiText,
+            imageUrl,
+            seen: true,
+            senderUserId: receiverUserId,
+            senderUsername: receiverName,
+            details: { emojiId },
+            version: 2
+        });
+        ref.created_at = ref.createdAt; // for table
+        appendOutgoingNotificationToLog(ref);
+        return ref;
+    }
+
+    /**
      * @param link
      */
     function openNotificationLink(link) {
@@ -1328,6 +1548,9 @@ export const useNotificationStore = defineStore('Notification', () => {
         markAllAsSeen,
         appendNotificationTableEntry,
         setNotificationInitStatus,
-        clearUnseenNotifications
+        clearUnseenNotifications,
+        logOutgoingInvite,
+        logOutgoingRequestInvite,
+        logOutgoingBoop
     };
 });

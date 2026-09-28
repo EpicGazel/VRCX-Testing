@@ -21,7 +21,10 @@
                             class="ml-auto size-2 shrink-0 rounded-full bg-blue-500" />
                     </ItemTitle>
                     <ItemDescription
-                        v-if="notification.type === 'invite' && notification.details?.worldId"
+                        v-if="
+                            (notification.type === 'invite' || notification.type === 'inviteSent') &&
+                            notification.details?.worldId
+                        "
                         class="text-xs">
                         <Location
                             :location="notification.details.worldId"
@@ -262,6 +265,7 @@
     import dayjs from 'dayjs';
 
     import { useGameStore, useGroupStore, useLocationStore, useNotificationStore, useUserStore } from '../../../stores';
+    import { isOutgoingNotificationType } from '../../../shared/utils/notificationCategory';
     import { showGroupDialog } from '../../../coordinators/groupCoordinator';
     import { showUserDialog } from '../../../coordinators/userCoordinator';
     import { useInviteChecks } from '../../../composables/useInviteChecks';
@@ -322,10 +326,13 @@
         friendRequest: UserPlus,
         ignoredFriendRequest: UserPlus,
         invite: Send,
+        inviteSent: Send,
         requestInvite: Send,
+        requestInviteSent: Send,
         inviteResponse: Send,
         requestInviteResponse: Send,
         boop: MessageCircle,
+        boopSent: MessageCircle,
         message: Mail
     };
 
@@ -362,6 +369,7 @@
         const type = props.notification.type;
         const link = props.notification.link;
         return (
+            !isOutgoingNotificationType(type) &&
             type !== 'requestInviteResponse' &&
             type !== 'inviteResponse' &&
             type !== 'message' &&
@@ -392,12 +400,15 @@
         const type = props.notification.type;
         return [
             'invite',
+            'inviteSent',
             'requestInvite',
+            'requestInviteSent',
             'inviteResponse',
             'requestInviteResponse',
             'friendRequest',
             'ignoredFriendRequest',
-            'boop'
+            'boop',
+            'boopSent'
         ].includes(type);
     });
 

@@ -1,6 +1,6 @@
 import { queryClient, queryKeys } from '../queries';
 import { request } from '../services/request';
-import { useUserStore } from '../stores';
+import { useNotificationStore, useUserStore } from '../stores';
 
 function getCurrentUserId() {
     return useUserStore().currentUser.id;
@@ -212,6 +212,11 @@ const miscReq = {
                 json,
                 params
             };
+            try {
+                useNotificationStore().logOutgoingBoop(params, json);
+            } catch (err) {
+                console.error('Failed to log outgoing boop', err);
+            }
             return args;
         });
     }

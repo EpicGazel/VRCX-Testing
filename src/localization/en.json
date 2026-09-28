@@ -467,12 +467,15 @@
             "filters": {
                 "requestInvite": "Request Invite",
                 "invite": "Invite",
+                "requestInviteSent": "Request Invite Sent",
+                "inviteSent": "Invite Sent",
                 "requestInviteResponse": "Request Invite Response",
                 "inviteResponse": "Invite Response",
                 "friendRequest": "Friend Request",
                 "ignoredFriendRequest": "Ignored Friend Request",
                 "message": "Message",
                 "boop": "Boop",
+                "boopSent": "Boop Sent",
                 "groupChange": "Group Change",
                 "event": {
                     "announcement": "Event Announcement"

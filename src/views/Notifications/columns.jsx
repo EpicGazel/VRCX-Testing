@@ -8,6 +8,7 @@ import { storeToRefs } from 'pinia';
 
 import { formatDateFilter } from '../../shared/utils';
 import { checkCanInvite } from '../../shared/utils/invite';
+import { isOutgoingNotificationType } from '../../shared/utils/notificationCategory';
 import { i18n } from '../../plugins';
 import {
     useGameStore,
@@ -332,7 +333,7 @@ export const createColumns = ({
             meta: { label: () => t('table.notification.photo') },
             cell: ({ row }) => {
                 const original = row.original;
-                if (original.type === 'boop') {
+                if (original.type === 'boop' || original.type === 'boopSent') {
                     const imageUrl = original.details?.imageUrl || original.imageUrl;
                     if (!imageUrl || imageUrl.startsWith('default_')) {
                         return null;
@@ -394,7 +395,7 @@ export const createColumns = ({
                 const original = row.original;
                 return (
                     <div class="w-full min-w-0">
-                        {original.type === 'invite' && original.details ? (
+                        {(original.type === 'invite' || original.type === 'inviteSent') && original.details ? (
                             <div class="w-full min-w-0">
                                 <Location
                                     location={original.details.worldId}
@@ -457,6 +458,7 @@ export const createColumns = ({
                 const original = row.original;
                 const hasResponses = Array.isArray(original.responses);
                 const showDecline =
+                    !isOutgoingNotificationType(original.type) &&
                     original.type !== 'requestInviteResponse' &&
                     original.type !== 'inviteResponse' &&
                     original.type !== 'message' &&
@@ -470,7 +472,9 @@ export const createColumns = ({
 
                 return (
                     <div class="flex items-center justify-end gap-2">
-                        {original.senderUserId !== currentUser.value?.id && !isNotificationExpired(original) ? (
+                        {original.senderUserId !== currentUser.value?.id &&
+                        !isOutgoingNotificationType(original.type) &&
+                        !isNotificationExpired(original) ? (
                             <span class="inline-flex items-center gap-2">
                                 {original.type === 'friendRequest' ? (
                                     <Tooltip>

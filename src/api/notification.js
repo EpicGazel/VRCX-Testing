@@ -1,5 +1,5 @@
 import { request } from '../services/request';
-import { useGalleryStore } from '../stores';
+import { useGalleryStore, useNotificationStore } from '../stores';
 
 const notificationReq = {
     /**
@@ -102,6 +102,11 @@ const notificationReq = {
                 params,
                 receiverUserId
             };
+            try {
+                useNotificationStore().logOutgoingInvite(receiverUserId, params, json);
+            } catch (err) {
+                console.error('Failed to log outgoing invite', err);
+            }
             return args;
         });
     },
@@ -116,6 +121,11 @@ const notificationReq = {
                 params,
                 receiverUserId
             };
+            try {
+                useNotificationStore().logOutgoingInvite(receiverUserId, params, json);
+            } catch (err) {
+                console.error('Failed to log outgoing invite', err);
+            }
             return args;
         });
     },
@@ -130,6 +140,11 @@ const notificationReq = {
                 params,
                 receiverUserId
             };
+            try {
+                useNotificationStore().logOutgoingRequestInvite(receiverUserId, params, json);
+            } catch (err) {
+                console.error('Failed to log outgoing invite request', err);
+            }
             return args;
         });
     },
@@ -145,6 +160,11 @@ const notificationReq = {
                 params,
                 receiverUserId
             };
+            try {
+                useNotificationStore().logOutgoingRequestInvite(receiverUserId, params, json);
+            } catch (err) {
+                console.error('Failed to log outgoing invite request', err);
+            }
             return args;
         });
     },

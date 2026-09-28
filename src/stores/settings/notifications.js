@@ -40,6 +40,9 @@ export const useNotificationsSettingsStore = defineStore('NotificationsSettings'
             inviteResponse: 'Friends',
             requestInviteResponse: 'Friends',
             boop: 'Friends',
+            inviteSent: 'Off',
+            requestInviteSent: 'Off',
+            boopSent: 'Off',
             friendRequest: 'On',
             Friend: 'On',
             Unfriend: 'On',
@@ -84,6 +87,9 @@ export const useNotificationsSettingsStore = defineStore('NotificationsSettings'
             inviteResponse: 'Friends',
             requestInviteResponse: 'Friends',
             boop: 'Friends',
+            inviteSent: 'Friends',
+            requestInviteSent: 'Friends',
+            boopSent: 'Friends',
             friendRequest: 'On',
             Friend: 'On',
             Unfriend: 'On',
@@ -296,6 +302,14 @@ export const useNotificationsSettingsStore = defineStore('NotificationsSettings'
         }
         if (!sharedFeedFilters.value.wrist.boop || sharedFeedFilters.value.wrist.boop === 'On') {
             sharedFeedFilters.value.wrist.boop = 'Friends';
+        }
+        if (!sharedFeedFilters.value.noty.inviteSent) {
+            sharedFeedFilters.value.noty.inviteSent = 'Off';
+            sharedFeedFilters.value.noty.requestInviteSent = 'Off';
+            sharedFeedFilters.value.noty.boopSent = 'Off';
+            sharedFeedFilters.value.wrist.inviteSent = 'Friends';
+            sharedFeedFilters.value.wrist.requestInviteSent = 'Friends';
+            sharedFeedFilters.value.wrist.boopSent = 'Friends';
         }
     }
     function setNotificationTTSVoice(index) {

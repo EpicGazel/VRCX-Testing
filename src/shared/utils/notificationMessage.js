@@ -68,6 +68,19 @@ export function getNotificationMessage(noty, message, displayNameOverride) {
                 title: sender,
                 body: t('notifications.request_invite', { message })
             };
+        case 'inviteSent':
+            return {
+                title: sender,
+                body: t('notifications.invite', {
+                    location: displayLocation(noty.details.worldId, noty.details.worldName),
+                    message
+                })
+            };
+        case 'requestInviteSent':
+            return {
+                title: sender,
+                body: t('notifications.request_invite', { message })
+            };
         case 'inviteResponse':
             return {
                 title: sender,
@@ -105,6 +118,8 @@ export function getNotificationMessage(noty, message, displayNameOverride) {
                 })
             };
         case 'boop':
+            return { title: sender, body: noty.message };
+        case 'boopSent':
             return { title: sender, body: noty.message };
         case 'groupChange':
             return { title: sender, body: noty.message };
@@ -218,6 +233,7 @@ export function getNotificationMessage(noty, message, displayNameOverride) {
  */
 const BODY_ONLY_TYPES = new Set([
     'boop',
+    'boopSent',
     'group.announcement',
     'group.informative',
     'group.invite',

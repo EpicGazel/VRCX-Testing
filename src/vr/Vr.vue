@@ -159,7 +159,7 @@
                                 </div>
                             </div>
                             <div
-                                v-else-if="feed.type === 'invite'"
+                                v-else-if="feed.type === 'invite' || feed.type === 'inviteSent'"
                                 class="x-friend-item"
                                 :class="{ friend: feed.isFriend, favorite: feed.isFavorite }">
                                 <div class="detail">
@@ -176,7 +176,7 @@
                                 </div>
                             </div>
                             <div
-                                v-else-if="feed.type === 'requestInvite'"
+                                v-else-if="feed.type === 'requestInvite' || feed.type === 'requestInviteSent'"
                                 class="x-friend-item"
                                 :class="{ friend: feed.isFriend, favorite: feed.isFavorite }">
                                 <div class="detail">
@@ -280,7 +280,7 @@
                                 </div>
                             </div>
                             <div
-                                v-else-if="feed.type === 'boop'"
+                                v-else-if="feed.type === 'boop' || feed.type === 'boopSent'"
                                 class="x-friend-item"
                                 :class="{ friend: feed.isFriend, favorite: feed.isFavorite }">
                                 <div class="detail">
@@ -787,6 +787,23 @@
                                 </div>
                             </div>
                             <div
+                                v-else-if="feed.type === 'inviteSent'"
+                                class="x-friend-item"
+                                :class="{ friend: feed.isFriend, favorite: feed.isFavorite }">
+                                <div class="detail">
+                                    <span class="extra flex items-center">
+                                        <span class="time">{{ formatDate(feed.created_at) }}</span>
+                                        you invited
+                                        <span class="name" v-text="feed.senderUsername"></span> to
+                                        <VrLocation
+                                            :location="feed.details.worldId"
+                                            :hint="feed.details.worldName"
+                                            :instancedisplayname="feed.instanceDisplayName"></VrLocation>
+                                        <span v-text="feed.details.inviteMessage"></span>
+                                    </span>
+                                </div>
+                            </div>
+                            <div
                                 v-else-if="feed.type === 'requestInvite'"
                                 class="x-friend-item"
                                 :class="{ friend: feed.isFriend, favorite: feed.isFavorite }">
@@ -794,6 +811,19 @@
                                     <span class="extra">
                                         <span class="time">{{ formatDate(feed.created_at) }}</span>
                                         <span class="name" v-text="feed.senderUsername"></span> has requested an invite
+                                        <span v-text="feed.details.requestMessage"></span>
+                                    </span>
+                                </div>
+                            </div>
+                            <div
+                                v-else-if="feed.type === 'requestInviteSent'"
+                                class="x-friend-item"
+                                :class="{ friend: feed.isFriend, favorite: feed.isFavorite }">
+                                <div class="detail">
+                                    <span class="extra">
+                                        <span class="time">{{ formatDate(feed.created_at) }}</span>
+                                        you requested an invite from
+                                        <span class="name" v-text="feed.senderUsername"></span>
                                         <span v-text="feed.details.requestMessage"></span>
                                     </span>
                                 </div>
@@ -881,7 +911,7 @@
                                 </div>
                             </div>
                             <div
-                                v-else-if="feed.type === 'boop'"
+                                v-else-if="feed.type === 'boop' || feed.type === 'boopSent'"
                                 class="x-friend-item"
                                 :class="{ friend: feed.isFriend, favorite: feed.isFavorite }">
                                 <div class="detail">
@@ -1953,8 +1983,18 @@
                     ''
                 )}${message}`;
                 break;
+            case 'inviteSent':
+                text = `you invited <strong>${noty.senderUsername}</strong> to ${displayLocation(
+                    noty.details.worldId,
+                    noty.details.worldName,
+                    ''
+                )}${message}`;
+                break;
             case 'requestInvite':
                 text = `<strong>${noty.senderUsername}</strong> has requested an invite ${message}`;
+                break;
+            case 'requestInviteSent':
+                text = `you requested an invite from <strong>${noty.senderUsername}</strong> ${message}`;
                 break;
             case 'inviteResponse':
                 text = `<strong>${noty.senderUsername}</strong> has responded to your invite ${message}`;
@@ -1978,6 +2018,7 @@
                 text = `<strong>${noty.previousDisplayName}</strong> changed their name to ${noty.displayName}`;
                 break;
             case 'boop':
+            case 'boopSent':
                 text = noty.message;
                 break;
             case 'groupChange':
