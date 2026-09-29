@@ -1415,12 +1415,15 @@ export const useNotificationStore = defineStore('Notification', () => {
         const now = new Date().toJSON();
         const emojiId = params.emojiId ?? json?.details?.emojiId ?? '';
         const receiverName = getOutgoingReceiverName(receiverUserId);
+        // Mirror the incoming boop wording ("{sender} Booped You! {emoji}").
+        // Default emojis append the humanized emoji name; custom emojis
+        // append nothing (their picture carries the meaning, as incoming).
         let imageUrl = '';
-        let emojiText = 'boop';
+        let emojiWord = '';
         if (typeof emojiId === 'string' && emojiId) {
             if (emojiId.startsWith('default_')) {
                 imageUrl = emojiId;
-                emojiText = emojiId.replace(/^default_/, '').replaceAll('_', ' ');
+                emojiWord = emojiId.replace(/^default_/, '').replaceAll('_', ' ');
             } else {
                 try {
                     const galleryStore = useGalleryStore();
@@ -1432,23 +1435,20 @@ export const useNotificationStore = defineStore('Notification', () => {
                     if (last?.file?.url) {
                         imageUrl = last.file.url;
                     }
-                    if (typeof match?.name === 'string' && match.name) {
-                        emojiText = match.name;
-                    } else {
-                        emojiText = 'boop';
-                    }
                 } catch {
                     // gallery unavailable, keep defaults
                 }
             }
         }
+        const booped = receiverName ? `You Booped ${receiverName}!` : 'You Booped!';
+        const message = emojiWord ? `${booped} ${emojiWord}` : booped;
         const ref = createDefaultNotificationV2Ref({
             id: `outgoing_boop_${Date.now()}_${receiverUserId}`,
             createdAt: now,
             type: 'boopSent',
             link: `user:${receiverUserId}`,
             linkText: receiverName,
-            message: emojiText,
+            message,
             imageUrl,
             seen: true,
             senderUserId: receiverUserId,
